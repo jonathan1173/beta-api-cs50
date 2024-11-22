@@ -14,8 +14,12 @@ SECRET_KEY = 'django-insecure-=cldztbc4jg&xl0!x673!*v2_=p$$eu)=7*f#d0#zs$44xx-h^
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'localhost:8000', '.vercel.app']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'localhost:8000', '.vercel.app','beta-api-cs50.vercel.app' ]
 
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # Desarrollo
+    "https://beta-frontend-xi.vercel.app",  # Producción
+]
 
 # Application definition
 
@@ -125,9 +129,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # nuevas cosas para el deploy
 
 # para conectar el react con django 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  
-]
+
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
