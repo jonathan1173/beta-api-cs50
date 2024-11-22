@@ -70,8 +70,12 @@ WSGI_APPLICATION = 'api.wsgi.app'
 # environments like Vercel. You can use a database over HTTP, hosted elsewhere.
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'beta_api_cs50',  # Nombre de la base de datos
+        'USER': 'beta_api_cs50_user',  # Nombre de usuario
+        'PASSWORD': 'IoNs2gCn2bbN2HwnHsOo6OlbDQVFmGIf',  # Contraseña
+        'HOST': 'dpg-ct05uihopnds73a87i5g-a.oregon-postgres.render.com',  # Host externo
+        'PORT': '5432',  # Puerto
     }
 }
 
