@@ -83,7 +83,6 @@ class UserChallengeSerializer(serializers.ModelSerializer):
         fields = ['id', 'user', 'challenge', 'liked', 'disliked', 'favorited']
         read_only_fields = ['user', 'challenge']
 
-from rest_framework import serializers
 
 class CodeExecutionSerializer(serializers.Serializer):
     language = serializers.ChoiceField(choices=[
@@ -93,20 +92,6 @@ class CodeExecutionSerializer(serializers.Serializer):
         ('java', 'Java'),
     ])
     code = serializers.CharField()
-
-
-from rest_framework import serializers
-
-class CodeExecutionSerializer(serializers.Serializer):
-    test = serializers.CharField()
-    solution = serializers.CharField()
-    language = serializers.ChoiceField(choices=["python", "javascript"])
-
-
-
-
-from rest_framework import serializers
-from .models import Challenge
 
 
 class CodeTestSerializer(serializers.Serializer):
@@ -125,3 +110,13 @@ class CodeTestSerializer(serializers.Serializer):
             raise serializers.ValidationError({"language": "Only Python and JavaScript are supported"})
 
         return data
+
+
+class SaveSolutionSerializer(serializers.Serializer):
+    solution = serializers.CharField(required=True, max_length=5000)
+
+    def update(self, instance, validated_data):
+        instance.solution = validated_data.get('solution', instance.solution)
+        instance.save()
+        return instance
+

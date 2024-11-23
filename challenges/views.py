@@ -1,12 +1,16 @@
 from rest_framework import generics, viewsets, permissions, status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .models import Challenge, UserChallenge, Category, Lenguage, Difficulty
+from .models import Challenge, UserChallenge, Category, Lenguage, Difficulty , User
 from .serializers import (
-    ChallengeSerializer, UserChallengeSerializer, CategorySerializer, LanguageSerializer, DifficultySerializer
+    ChallengeSerializer, UserChallengeSerializer, CategorySerializer, LanguageSerializer, DifficultySerializer, CodeTestSerializer, CodeExecutionSerializer, SaveSolutionSerializer
 )
+import requests
+from django.shortcuts import get_object_or_404
+
 
 
 class ChallengePagination(PageNumberPagination):
@@ -116,13 +120,6 @@ class LikeDislikeFavoriteView(APIView):
         return Response({"error": "Invalid action"}, status=status.HTTP_400_BAD_REQUEST)
 
 
-
-import requests
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from .serializers import CodeExecutionSerializer
-
 class CodeExecutionView(APIView):
     def post(self, request):
         serializer = CodeExecutionSerializer(data=request.data)
@@ -177,16 +174,6 @@ class CodeExecutionView(APIView):
         # Respuesta de error en caso de datos inválidos
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
-
-
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from rest_framework import status
-from .models import Challenge, User
-from .serializers import CodeTestSerializer
-import requests
 
 class CodeTestView(APIView):
     permission_classes = [IsAuthenticated]
@@ -289,3 +276,14 @@ class CodeTestView(APIView):
                 {"error": f"Error interno: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+class SaveSolutionAPIView(APIView):
+    def post(self, request, challenge_id):
+        challenge = get_object_or_404(Challenge, id=challenge_id)
+        serializer = SaveSolutionSerializer(data=request.data)
+
+        if serializer.is_valid():
+            serializer.update(instance=challenge, validated_data=serializer.validated_data)
+            return Response({"message": "Solución guardada correctamente."}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
