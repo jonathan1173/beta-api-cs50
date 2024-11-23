@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Challenge, UserChallenge, Category, Lenguage, Difficulty
+from .models import Challenge, UserChallenge, Category, Lenguage, Difficulty ,ChallengeComment
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -120,3 +120,20 @@ class SaveSolutionSerializer(serializers.Serializer):
         instance.save()
         return instance
 
+
+class ChallengeCommentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ChallengeComment
+        fields = ['id', 'content', 'timestamp', 'user_challenge']
+
+
+class ChallengeCommentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ChallengeComment
+        fields = ['id', 'user_challenge', 'content', 'timestamp']
+        read_only_fields = ['id', 'timestamp', 'user_challenge']  # user_challenge será manejado automáticamente
+
+    def create(self, validated_data):
+        user_challenge = self.context['user_challenge']
+        validated_data['user_challenge'] = user_challenge
+        return ChallengeComment.objects.create(**validated_data)

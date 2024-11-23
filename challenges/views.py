@@ -12,7 +12,6 @@ import requests
 from django.shortcuts import get_object_or_404
 
 
-
 class ChallengePagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = 'page_size'
@@ -286,4 +285,63 @@ class SaveSolutionAPIView(APIView):
         if serializer.is_valid():
             serializer.update(instance=challenge, validated_data=serializer.validated_data)
             return Response({"message": "Solución guardada correctamente."}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+from rest_framework.generics import ListAPIView
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import IsAuthenticated
+from .models import ChallengeComment
+from .serializers import ChallengeCommentSerializer
+
+
+class CommentPagination(PageNumberPagination):
+    page_size = 10  
+    page_size_query_param = 'page_size'
+    max_page_size = 50
+
+class ChallengeCommentListView(ListAPIView):
+    serializer_class = ChallengeCommentSerializer
+    pagination_class = CommentPagination
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        challenge_id = self.kwargs['challenge_id']
+        return ChallengeComment.objects.filter(user_challenge__challenge_id=challenge_id).order_by('-timestamp')
+
+# creacion del comentario 
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import status
+from .models import Challenge, UserChallenge
+from .serializers import ChallengeCommentSerializer
+class AddChallengeCommentView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, challenge_id):
+        # Obtener el desafío asociado
+        try:
+            challenge = Challenge.objects.get(id=challenge_id)
+        except Challenge.DoesNotExist:
+            return Response({"error": "Challenge not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Verificar si el usuario tiene un `UserChallenge` relacionado
+        try:
+            user_challenge = UserChallenge.objects.get(user=request.user, challenge=challenge)
+        except UserChallenge.DoesNotExist:
+            return Response({"error": "UserChallenge not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Crear el comentario
+        data = request.data.copy()
+        serializer = ChallengeCommentSerializer(
+            data=data,
+            context={'user_challenge': user_challenge}  # Pasar user_challenge al contexto
+        )
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
