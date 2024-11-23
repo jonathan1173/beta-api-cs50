@@ -83,3 +83,45 @@ class UserChallengeSerializer(serializers.ModelSerializer):
         fields = ['id', 'user', 'challenge', 'liked', 'disliked', 'favorited']
         read_only_fields = ['user', 'challenge']
 
+from rest_framework import serializers
+
+class CodeExecutionSerializer(serializers.Serializer):
+    language = serializers.ChoiceField(choices=[
+        ('python', 'Python'),
+        ('c', 'C'),
+        ('csharp', 'C#'),
+        ('java', 'Java'),
+    ])
+    code = serializers.CharField()
+
+
+from rest_framework import serializers
+
+class CodeExecutionSerializer(serializers.Serializer):
+    test = serializers.CharField()
+    solution = serializers.CharField()
+    language = serializers.ChoiceField(choices=["python", "javascript"])
+
+
+
+
+from rest_framework import serializers
+from .models import Challenge
+
+
+class CodeTestSerializer(serializers.Serializer):
+    challenge_id = serializers.IntegerField(required=True)
+    solution = serializers.CharField(required=True)
+
+    def validate(self, data):
+        # Validar si el desafío existe
+        try:
+            challenge = Challenge.objects.get(id=data["challenge_id"])
+        except Challenge.DoesNotExist:
+            raise serializers.ValidationError({"challenge_id": "Challenge not found"})
+
+        # Validar el lenguaje permitido
+        if challenge.language.name not in ["python", "javascript"]:
+            raise serializers.ValidationError({"language": "Only Python and JavaScript are supported"})
+
+        return data
