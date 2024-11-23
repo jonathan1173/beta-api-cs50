@@ -196,71 +196,96 @@ class CodeTestView(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        validated_data = serializer.validated_data
-        challenge = Challenge.objects.get(id=validated_data["challenge_id"])
-        solution = validated_data["solution"]
+        try:
+            validated_data = serializer.validated_data
+            challenge = Challenge.objects.get(id=validated_data["challenge_id"])
+            solution = validated_data["solution"]
 
-        # Combinar código de solución y test
-        code_to_execute = f"{solution}\n\n{challenge.test}"
-        print("Code to execute:")
-        print(code_to_execute)
+            # Combinar código de solución y test
+            code_to_execute = f"{solution}\n\n{challenge.test}"
 
-        # Ajustar el payload para cumplir con la API de Piston
-        payload = {
-            "language": challenge.language.name.lower(),
-            "version": "*",
-            "files": [
-                {
-                    "name": "main.py",
-                    "content": code_to_execute
-                }
-            ]
-        }
+            # Payload para la API de Piston
+            payload = {
+                "language": challenge.language.name.lower(),
+                "version": "*",
+                "files": [{"name": "main.py", "content": code_to_execute}],
+            }
 
-        # Llamar a la API de Piston
-        response = requests.post(
-            url="https://emkc.org/api/v2/piston/execute",
-            json=payload,
-        )
+            # Llamar a la API de Piston
+            response = requests.post(
+                url="https://emkc.org/api/v2/piston/execute",
+                json=payload,
+            )
+            if response.status_code != 200:
+                return Response(
+                    {"error": "Error al comunicarse con la API de Piston"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
 
-        if response.status_code != 200:
-            print("Piston API Error:", response.json())
-            return Response({"error": "Error evaluating code"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            execution_result = response.json()
+            stdout = execution_result["run"].get("stdout", "")
+            stderr = execution_result["run"].get("stderr", "")
 
-        execution_result = response.json()
-        stdout = execution_result["run"].get("stdout", "")
-        stderr = execution_result["run"].get("stderr", "")
-        print("Execution result stdout:", stdout)
-        print("Execution result stderr:", stderr)
+            # Analizar resultados
+            test_results = []
+            total_tests = 0
+            successful_tests = 0
 
-        # Analizar resultados
-        total_tests = challenge.test.count("assert")  # Número de tests definidos
-        successful_tests = stdout.count("passed")  # Contar "passed" en la salida
+            for line in (stdout + "\n" + stderr).splitlines():
+                if "Test" in line:
+                    total_tests += 1
+                    test_name = line.split(":")[0].strip()
+                    if "passed" in line:
+                        status_test = "passed"
+                        successful_tests += 1
+                    else:
+                        status_test = "failed"
+                    test_results.append({
+                        "test_name": test_name,
+                        "status": status_test,
+                        "output": line.strip(),
+                    })
 
-        # Obtener nivel de dificultad
-        difficulty = challenge.difficulty  # Accede al objeto relacionado Difficulty
-        base_points = int(difficulty.grado) * 10  # Calcula los puntos base
-        points_per_test = base_points / total_tests if total_tests > 0 else 0  # Puntos por cada test
+            # Agregar errores del stderr si existen
+            if "AssertionError" in stderr:
+                total_tests += 1
+                test_results.append({
+                    "test_name": f"Test {total_tests}",
+                    "status": "failed",
+                    "output": stderr.strip(),
+                })
 
-        # Calcular puntos según los tests exitosos
-        points_awarded = int(successful_tests * points_per_test)
+            # Calcular puntos
+            difficulty = challenge.difficulty
+            base_points = int(difficulty.grado) * 10
+            points_per_test = base_points / total_tests if total_tests > 0 else 0
+            points_awarded = int(successful_tests * points_per_test)
 
-        # Actualizar puntos del usuario
-        user = request.user
-        user.points += points_awarded
-        user.save()
+            # Actualizar puntos del usuario
+            user = request.user
+            user.points += points_awarded
+            user.save()
 
-        # Mensaje de resultado
-        if successful_tests == total_tests:
-            message = "All tests passed successfully!"
-        else:
-            message = f"Passed {successful_tests}/{total_tests} tests"
+            # Crear respuesta final
+            message = (
+                "All tests passed successfully!"
+                if successful_tests == total_tests
+                else f"Passed {successful_tests}/{total_tests} tests"
+            )
 
-        return Response({
-            "message": "Code evaluated successfully",
-            "total_tests": total_tests,
-            "successful_tests": successful_tests,
-            "success_percentage": (successful_tests / total_tests) * 100 if total_tests > 0 else 0,
-            "points_awarded": points_awarded,
-            "output": message,
-        }, status=status.HTTP_200_OK if successful_tests > 0 else status.HTTP_400_BAD_REQUEST)
+            return Response({
+                "message": message,
+                "total_tests": total_tests,
+                "successful_tests": successful_tests,
+                "success_percentage": (successful_tests / total_tests) * 100 if total_tests > 0 else 0,
+                "points_awarded": points_awarded,
+                "output": message,
+                "test_results": test_results,
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            # Manejo de errores inesperados
+            return Response(
+                {"error": f"Error interno: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
