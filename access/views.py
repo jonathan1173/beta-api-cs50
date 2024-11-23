@@ -7,6 +7,9 @@ from django.contrib.auth.hashers import make_password
 from django.contrib.auth import authenticate
 from .models import User
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.generics import ListAPIView
+from .serializers import UserSerializer
+from rest_framework.permissions import IsAuthenticated
 
 class UserRegisterView(APIView):
     permission_classes = [AllowAny]
@@ -43,3 +46,9 @@ class UserLoginView(APIView):
                 'access': str(refresh.access_token),
             })
         return Response({'error': 'Credenciales incorrectas'}, status=status.HTTP_401_UNAUTHORIZED)
+
+
+class TopUsersAPIView(ListAPIView):
+    permission_classes = [IsAuthenticated]
+    queryset = User.objects.order_by('-points')[:20]
+    serializer_class = UserSerializer
