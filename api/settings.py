@@ -18,7 +18,7 @@ ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'localhost:8000', '.vercel.app','beta
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # Desarrollo
-    "https://beta-frontend-xi.vercel.app",  # Producción
+    "https://beta-frontend-desing.vercel.app",  # Producción
 ]
 
 # Application definition
